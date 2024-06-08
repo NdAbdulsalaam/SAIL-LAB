@@ -41,3 +41,6 @@ count = c(1)
 for (i in count){
   print("Yes")
 }
+
+dbinom(x=0:8, size=8, prob=1/6)
+
