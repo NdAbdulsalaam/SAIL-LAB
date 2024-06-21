@@ -1,4 +1,4 @@
-setwd("C:/Users/Open User/Desktop/Nurudeen-DS/Class/Practice")
+setwd("C:/Users/Open User/Desktop/Nurudeen-DS/Practice")
 
 downlaod_data = function(dataUrl, destination="data", fileName="covid_19.csv" ){
   if(!file.exists(destination)){
