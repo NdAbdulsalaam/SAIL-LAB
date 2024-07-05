@@ -3,12 +3,15 @@ pacman::p_load(
   broom,
   BSDA,
   manipulate,
-  ggfortiffy
+  ggfortify,
+  tidyverse
 )
 
-library(UsingR)
+?glm
 
-data(father.son)
+data(mtcars)
 
-data(diamond)
-head(diamond)
+view(mtcars)
+glimpse(mtcars)
+
+model <-  lm(mpg ~ wt +cyl, data =mtcars)
