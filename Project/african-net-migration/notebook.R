@@ -17,7 +17,7 @@ pacman::p_load(
   rnaturalearth,
   janitor,
   tidygeocoder,
-  rnaturalearth
+  rnaturalearthdata
 )
 
 #install.packages("rnaturalearthdata")
@@ -57,30 +57,19 @@ wrangle_data <- function(my_data){
   )
   
 
+  
+  #filtered_data$`Country Name` <- standard_names
+  
+  
+  
+
   ### Filtered african countries
   filtered_data <- my_data %>% filter(`Country Name` %in% african_countries)
-  filtered_data <- filtered_data %>% arrange(`Country Name`)
-
   
-  # Standardized names used by ne_countries()
-  standard_names <- c(
-    "Algeria", "Angola", "Benin", "Botswana", "Burkina Faso", "Burundi", 
-    "Cabo Verde", "Cameroon", "Central African Republic", "Chad", "Comoros", 
-    "Congo, Dem. Rep.", "Congo, Rep.", "Djibouti", "Egypt, Arab Rep.", 
-    "Equatorial Guinea", "Eritrea", "Eswatini", "Ethiopia", "Gabon", 
-    "Gambia, The", "Ghana", "Guinea", "Guinea-Bissau", "Côte d'Ivoire", 
-    "Kenya", "Lesotho", "Liberia", "Libya", "Madagascar", "Malawi", 
-    "Mali", "Mauritania", "Mauritius", "Morocco", "Mozambique", 
-    "Namibia", "Niger", "Nigeria", "Rwanda", "São Tomé and Príncipe", 
-    "Senegal", "Seychelles", "Sierra Leone", "Somalia", "South Africa", 
-    "South Sudan", "Sudan", "Tanzania", "Togo", "Tunisia", "Uganda", 
-    "Zambia", "Zimbabwe"
-  )
-  
-  filtered_data$`Country Name` <- standard_names
+  ### cahnged column header
   names(filtered_data)[names(filtered_data) == "Country Name"] <- "country_name"
-  
-  
+
+    
   return(filtered_data)
 }
 
@@ -103,16 +92,17 @@ transpose_data <- function(filtered_data){
   return(trans_data)
 }
 
-
+## called wrangle function
 filtered_data <- wrangle_data("API_SM.POP.NETM_DS2_en_excel_v2_424013.xls")
+
+## Added total column
 filtered_data$total <- filtered_data %>% 
   select(-c(country_name)) %>% 
   rowSums()
-view(filtered_data)
 
-
+## Transposed data
 trans_data <- transpose_data(filtered_data)
-view(trans_data)
+
 
 #EDA
 #esquisse::esquisser(filtered_data)
@@ -176,30 +166,48 @@ ggplot(filtered_data) +
   labs(title = "Nigeria 1983 Net Migration in Comparison to Other African Countries", y = "Net Migration in Millions")
 
 
-# Load world map data for Africa
-world <- ne_countries(scale = "medium", continent = "Africa", returnclass = "sf")
+## Loaded longitude and latiude dataset
+long_and_lat <- read.csv("long_and_lat.csv")
 
-#Geocode filtered data to get long and lat of the countries
-geocoded_filtered_data <- filtered_data %>% 
-  
-  # geocode Address to lat/long
-  tidygeocoder::geocode(
-    address = country_name,
-    method = "osm"
-  )
+#merged filtered_data and long_and_lat
+merged_data <- left_join(filtered_data, long_and_lat, by = c("country_name" = "country_name"))
+view(merged_data)
 
-view(geocoded_filtered_data)
+# Get world map data
+world_map <- ne_countries(scale = "medium", returnclass = "sf")
 
-# Merge with world map data
-merged_data <- left_join(world, geocoded_filtered_data, by = c("name" = "country_name"))
+# Filter for African countries
+africa <- world_map %>%
+  filter(continent == "Africa")
 
-# Plot the map
-ggplot() +
-  geom_sf(data = merged_data, aes(fill = total)) +
-  scale_fill_viridis_c(name = "Net Migration", option = "plasma") +
+
+# Calculate centroids for labeling
+africa_centroids <- africa %>%
+  st_centroid() %>%
+  st_coordinates() %>%
+  as.data.frame() %>%
+  rename(longitude = X, latitude = Y)
+
+
+# Add country code to centroids
+africa_centroids <- africa %>%
+  st_drop_geometry() %>%
+  select(sov_a3) %>%
+  bind_cols(africa_centroids)
+
+# Join merged_data with the map data
+africa_joined <- africa %>%
+  left_join(merged_data, by = c("name" = "country_name"))
+
+
+# Plot the map of Africa with a gradient fill
+ggplot(data = africa_joined) +
+  geom_sf(aes(fill = total)) + # Use total column for the fill aesthetic
+  scale_fill_gradient(low = "red", high = "navy", na.value = "grey50") +
+  geom_text(data = africa_centroids, aes(x = longitude, y = latitude, label = sov_a3), 
+            size = 2, color = "white", check_overlap = TRUE) +
   theme_minimal() +
-  labs(title = "Net Migration in African Countries") +
-  # Adding country labels
-  geom_text(data = merged_data, aes(label = name, x = long, y = lat), size = 3.5, color = "black", check_overlap = TRUE, nudge_y = 0.5)
-
+  labs(title = "Net Migration in African Countries",
+       fill = "Net Migration") +
+  theme(aspect.ratio = 0.8)  # Adjust the aspect ratio as needed
 
