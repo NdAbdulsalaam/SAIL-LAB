@@ -1,8 +1,5 @@
 setwd("C:/Users/Open User/Desktop/Nurudeen-DS/Practice")
 
-# Retrieve the Google API key from the environment
-google_api_key <- Sys.getenv("GOOGLEGEOCODE_API_KEY")
-
 pacman::p_load(
   usethis,
   tidyverse,
